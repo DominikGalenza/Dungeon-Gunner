@@ -5,9 +5,9 @@ using UnityEngine;
 
 public class RoomNodeSO : ScriptableObject
 {
-    [HideInInspector] public string id;
-    [HideInInspector] public List<string> parentRoomNodeIDList = new List<string>();
-    [HideInInspector] public List<string> childRoomNodeIDList = new List<string>();
+	[HideInInspector] public string id;
+	[HideInInspector] public List<string> parentRoomNodeIDList = new List<string>();
+	[HideInInspector] public List<string> childRoomNodeIDList = new List<string>();
     [HideInInspector] public RoomNodeGraphSO roomNodeGraph;
     [HideInInspector] public RoomNodeTypeListSO roomNodeTypeList;
     public RoomNodeTypeSO roomNodeType;
@@ -99,11 +99,15 @@ public class RoomNodeSO : ScriptableObject
         {
             ProcessLeftClickDownEvent();
         }
+        else if (current.button == 1)
+        {
+            ProcessRightClickDownEvent(current);
+        }
 	}
 
-    /// <summary>
-    /// Process left click down event
-    /// </summary>
+	/// <summary>
+	/// Process left click down event
+	/// </summary>
 	private void ProcessLeftClickDownEvent()
 	{
         Selection.activeObject = this;
@@ -111,8 +115,16 @@ public class RoomNodeSO : ScriptableObject
 	}
 
     /// <summary>
-    /// Process mouse up event
+    /// Process right click down event
     /// </summary>
+	private void ProcessRightClickDownEvent(Event current)
+	{
+		roomNodeGraph.SetNodeToDrawConnectionLineFrom(this, current.mousePosition);
+	}
+
+	/// <summary>
+	/// Process mouse up event
+	/// </summary>
 	private void ProcessMouseUpEvent(Event current)
 	{
         if (current.button == 0)
@@ -160,6 +172,24 @@ public class RoomNodeSO : ScriptableObject
 	{
         rect.position += delta;
         EditorUtility.SetDirty(this);
+	}
+
+    /// <summary>
+    /// Add childID to the node (returns true if the node has been added, false otherwise)
+    /// </summary>
+    public bool AddChildRoomNodeIDToRoomNode(string childID)
+    {
+        childRoomNodeIDList.Add(childID);
+        return true;
+    }
+
+	/// <summary>
+	/// Add parentID to the node (returns true if the node has been added, false otherwise)
+	/// </summary>
+	public bool AddParentRoomNodeIDToRoomNode(string parentID)
+	{
+		parentRoomNodeIDList.Add(parentID);
+		return true;
 	}
 #endif
 

@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using UnityEditor.MPE;
 using UnityEngine;
+using static PlasticGui.LaunchDiffParameters;
 
 public class RoomNodeGraphEditor : EditorWindow
 {
@@ -14,6 +15,8 @@ public class RoomNodeGraphEditor : EditorWindow
 	private const float nodeHeight = 75f;
 	private const int nodePadding = 25;
 	private const int nodeBorder = 12;
+	private const float connectingLineWidth = 3f;
+	private const float connectingLineArrowSize = 6f;
 
 	[MenuItem("Room Node Graph Editor", menuItem = "Window/Dungeon Editor/Room Node Graph Editor")]
 	private static void OpenWindow()
@@ -56,14 +59,25 @@ public class RoomNodeGraphEditor : EditorWindow
 	{
 		if (currentRoomNodeGraph != null)
 		{
+			DrawDraggedLine();
 			ProcessEvent(Event.current);
+			DrawRoomConnections();
 			DrawRoomNodes();
 		}
 		if (GUI.changed)
 		{
 			Repaint();
 		}
-	}	
+	}
+	
+	private void DrawDraggedLine()
+	{
+		if (currentRoomNodeGraph.linePosition != Vector2.zero)
+		{
+			Handles.DrawBezier(currentRoomNodeGraph.roomNodeToDrawLineFrom.rect.center, currentRoomNodeGraph.linePosition, 
+				currentRoomNodeGraph.roomNodeToDrawLineFrom.rect.center, currentRoomNodeGraph.linePosition, Color.white, null, connectingLineWidth);
+		}
+	}
 
 	private void ProcessEvent(Event current)
 	{
@@ -72,7 +86,7 @@ public class RoomNodeGraphEditor : EditorWindow
 			currentRoomNode = IsMouseOverRoomNode(current);
 		}
 
-		if (currentRoomNode == null)
+		if (currentRoomNode == null || currentRoomNodeGraph.roomNodeToDrawLineFrom != null)
 		{
 			ProcessRoomNodeGraphEvents(current);
 		}
@@ -107,10 +121,18 @@ public class RoomNodeGraphEditor : EditorWindow
 			case EventType.MouseDown:
 				ProcessMouseDownEvent(current);
 				break;
+			case EventType.MouseUp:
+				ProcessMouseUpEvent(current);
+				break;
+			case EventType.MouseDrag:
+				ProcessMouseDragEvent(current);
+				break;
 			default:
 				break;
 		}
 	}
+
+	
 
 	/// <summary>
 	/// Process mouse down events on the room node graph (not over a node)
@@ -122,7 +144,69 @@ public class RoomNodeGraphEditor : EditorWindow
 			ShowContextMenu(current.mousePosition);
 		}
 	}
-	
+
+	/// <summary>
+	/// Process mouse up event
+	/// </summary>
+	private void ProcessMouseUpEvent(Event current)
+	{
+		if (current.button == 1 && currentRoomNodeGraph.roomNodeToDrawLineFrom != null)
+		{
+			RoomNodeSO roomNode = IsMouseOverRoomNode(current);
+
+			if (roomNode != null)
+			{
+				if (currentRoomNodeGraph.roomNodeToDrawLineFrom.AddChildRoomNodeIDToRoomNode(roomNode.id))
+				{
+					roomNode.AddParentRoomNodeIDToRoomNode(currentRoomNodeGraph.roomNodeToDrawLineFrom.id);
+				}
+			}
+
+			ClearLineDrag();
+		}
+	}
+
+	/// <summary>
+	/// Clear line drag rom a room node
+	/// </summary>
+	private void ClearLineDrag()
+	{
+		currentRoomNodeGraph.roomNodeToDrawLineFrom = null;
+		currentRoomNodeGraph.linePosition = Vector2.zero;
+		GUI.changed = true;
+	}
+
+	/// <summary>
+	/// Process mouse drag event
+	/// </summary>
+	private void ProcessMouseDragEvent(Event current)
+	{
+		if (current.button == 1)
+		{
+			ProcessRightMouseDragEvent(current);
+		}
+	}
+
+	/// <summary>
+	/// Process right mouse drag event - draw line
+	/// </summary>
+	private void ProcessRightMouseDragEvent(Event current)
+	{
+		if (currentRoomNodeGraph.roomNodeToDrawLineFrom != null)
+		{
+			DragConnectingLine(current.delta);
+			GUI.changed = true;
+		}
+	}
+
+	/// <summary>
+	/// Drag connecting line from room node
+	/// </summary>
+	private void DragConnectingLine(Vector2 delta)
+	{
+		currentRoomNodeGraph.linePosition += delta;
+	}
+
 	/// <summary>
 	/// Show the context menu
 	/// </summary>
@@ -132,6 +216,50 @@ public class RoomNodeGraphEditor : EditorWindow
 		menu.AddItem(new GUIContent("Creat Room Node"), false, CreateRoomNode, mousePosition);
 		menu.ShowAsContext();
 	}
+
+	/// <summary>
+	/// Draw connections in the graph window between room nodes
+	/// </summary>
+	private void DrawRoomConnections()
+	{
+		foreach (RoomNodeSO roomNode in currentRoomNodeGraph.roomNodeList)
+		{
+			if (roomNode.childRoomNodeIDList.Count > 0)
+			{
+				foreach (string childRoomNodeID in roomNode.childRoomNodeIDList)
+				{
+					if (currentRoomNodeGraph.roomNodeDictionary.ContainsKey(childRoomNodeID))
+					{
+						DrawConnectionLine(roomNode, currentRoomNodeGraph.roomNodeDictionary[childRoomNodeID]);
+						GUI.changed = true;
+					}
+				}
+			}
+		}
+	}
+
+	/// <summary>
+	/// Draw connection line between the parent room node and child room node
+	/// </summary>
+	private void DrawConnectionLine(RoomNodeSO parentRoomNode, RoomNodeSO childRoomNode)
+	{
+		Vector2 startPosition = parentRoomNode.rect.center;
+		Vector2 endPosition = childRoomNode.rect.center;
+
+		Vector2 midPosition = (startPosition + endPosition) / 2;
+		Vector2 direction = endPosition - startPosition;
+		
+		Vector2 arrowTailPoint1 = midPosition - new Vector2(-direction.y, direction.x).normalized * connectingLineArrowSize;
+		Vector2 arrowTailPoint2 = midPosition + new Vector2(-direction.y, direction.x).normalized * connectingLineArrowSize;
+		Vector2 arrowHeadPoint = midPosition + direction.normalized * connectingLineArrowSize;
+
+		Handles.DrawBezier(arrowHeadPoint, arrowTailPoint1, arrowHeadPoint, arrowTailPoint1, Color.white, null, connectingLineWidth);
+		Handles.DrawBezier(arrowHeadPoint, arrowTailPoint2, arrowHeadPoint, arrowTailPoint2, Color.white, null, connectingLineWidth);
+
+		Handles.DrawBezier(startPosition, endPosition, startPosition, endPosition, Color.white, null, connectingLineWidth);
+		GUI.changed = true;
+	}
+
 
 	/// <summary>
 	/// Create a room node at the mouse position
@@ -153,6 +281,8 @@ public class RoomNodeGraphEditor : EditorWindow
 		roomNode.Initialise(new Rect(mousePositon, new Vector2(nodeWidth, nodeHeight)), currentRoomNodeGraph, roomNodeType);
 		AssetDatabase.AddObjectToAsset(roomNode, currentRoomNodeGraph);
 		AssetDatabase.SaveAssets();
+
+		currentRoomNodeGraph.OnValidate();
 	}
 
 	/// <summary>
