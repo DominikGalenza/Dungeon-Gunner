@@ -261,7 +261,9 @@ public class RoomNodeGraphEditor : EditorWindow
 	private void ShowContextMenu(Vector2 mousePosition)
 	{
 		GenericMenu menu = new GenericMenu();
-		menu.AddItem(new GUIContent("Creat Room Node"), false, CreateRoomNode, mousePosition);
+		menu.AddItem(new GUIContent("Create Room Node"), false, CreateRoomNode, mousePosition);
+		menu.AddSeparator("");
+		menu.AddItem(new GUIContent("Select All Room Nodes"), false, SelectAllRoomNodes);
 		menu.ShowAsContext();
 	}
 
@@ -305,6 +307,18 @@ public class RoomNodeGraphEditor : EditorWindow
 		Handles.DrawBezier(arrowHeadPoint, arrowTailPoint2, arrowHeadPoint, arrowTailPoint2, Color.white, null, connectingLineWidth);
 
 		Handles.DrawBezier(startPosition, endPosition, startPosition, endPosition, Color.white, null, connectingLineWidth);
+		GUI.changed = true;
+	}
+
+	/// <summary>
+	/// Select all room nodes
+	/// </summary>
+	private void SelectAllRoomNodes()
+	{
+		foreach (RoomNodeSO roomNode in currentRoomNodeGraph.roomNodeList)
+		{
+			roomNode.isSelected = true;
+		}
 		GUI.changed = true;
 	}
 
