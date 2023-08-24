@@ -26,7 +26,7 @@ public static class HelperUtilities
 
         if (enumerableObjectToCheck == null)
         {
-            Debug.Log($"{fieldName} is null in object {thisObject.name.ToString()}");
+            Debug.Log($"{fieldName} is null in object {thisObject.name}");
             error = true;
         }
 
